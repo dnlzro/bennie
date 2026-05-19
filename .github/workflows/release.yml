@@ -1,0 +1,28 @@
+name: Release
+
+on:
+  release:
+    types: [created]
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        arch: [arm64, x86_64]
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: Build binary
+        run: swift build -c release --arch ${{ matrix.arch }}
+      - name: Prepare binary
+        run: |
+          BINARY=$(swift build -c release --arch ${{ matrix.arch }} --show-bin-path)/bennie
+          strip "$BINARY"
+          cp "$BINARY" bennie-${{ github.ref_name }}-${{ matrix.arch }}
+      - name: Upload binary to release
+        env:
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
+        run: gh release upload ${{ github.ref_name }} bennie-${{ github.ref_name }}-${{ matrix.arch }} --clobber
