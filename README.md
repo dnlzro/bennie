@@ -4,6 +4,21 @@ Set a solid colour wallpaper that changes automatically based on the system's ap
 
 Generates a minimal 1px HEIC image with light/dark appearance metadata. Once set, macOS handles appearance switching natively (no background process required).
 
+## Installation
+
+Download a **pre-built binary** from the [releases page](https://github.com/anomalyco/bennie/releases/latest).
+
+> [!NOTE]
+> To avoid macOS Gatekeeper warnings (which may prevent the binary from running), use `xattr -d com.apple.quarantine bennie`.
+
+Or, you can **build from source**:
+
+```bash
+swift build -c release
+```
+
+After building, the binary will be at `.build/release/bennie`. You can also run directly with `swift run -c release`.
+
 ## Quick start
 
 Create a config file at `~/.config/bennie/config.json`:
