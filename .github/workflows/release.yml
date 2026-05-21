@@ -13,6 +13,8 @@ jobs:
       matrix:
         arch: [arm64, x86_64]
     runs-on: macos-latest
+    env:
+      BENNIE_VERSION: bennie-${{ github.ref_name }}-${{ matrix.arch }}
     steps:
       - uses: actions/checkout@v6
       - name: Build binary
@@ -21,8 +23,8 @@ jobs:
         run: |
           BINARY=$(swift build -c release --arch ${{ matrix.arch }} --show-bin-path)/bennie
           strip "$BINARY"
-          cp "$BINARY" bennie-${{ github.ref_name }}-${{ matrix.arch }}
-      - name: Upload binary to release
+          tar -czf "$BENNIE_VERSION".tar.gz "$BINARY"
+      - name: Upload to release
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release upload ${{ github.ref_name }} bennie-${{ github.ref_name }}-${{ matrix.arch }} --clobber
+        run: gh release upload ${{ github.ref_name }} "$BENNIE_VERSION".tar.gz --clobber
