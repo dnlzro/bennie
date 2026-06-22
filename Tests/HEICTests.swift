@@ -69,3 +69,39 @@ func secondImageHasNoAppearanceMetadata() throws {
   let tag = CGImageMetadataCopyTagWithPath(md, nil, "apple_desktop:apr" as CFString)
   #expect(tag == nil)
 }
+
+// Lossy HEVC compression can mangle solid-color 1×1 images due to chroma
+// subsampling, shifting colours (e.g. light grey turning green). This test
+// asserts lossless encoding preserves RGB values within ±1 (HEIC's YUV
+// round-trip can introduce minor rounding, but catastrophic shifts like the
+// original green-tint bug would fail this).
+@Test("HEIC round-trip preserves exact sRGB color values")
+func roundTripPreservesColor() throws {
+  let light = CGColor(srgbRed: 0xF9 / 255, green: 0xC8 / 255, blue: 0xE4 / 255, alpha: 1)
+  let dark = CGColor(srgbRed: 0x1A / 255, green: 0x2B / 255, blue: 0x3C / 255, alpha: 1)
+
+  let data = try encodeDynamicHEIC(light: light, dark: dark)
+
+  let src = try #require(CGImageSourceCreateWithData(data as CFData, nil))
+  #expect(CGImageSourceGetCount(src) == 2)
+
+  let li = try #require(CGImageSourceCreateImageAtIndex(src, 0, nil))
+  let di = try #require(CGImageSourceCreateImageAtIndex(src, 1, nil))
+
+  let pixels: [(CGImage, (Int, Int, Int))] = [
+    (li, (0xF9, 0xC8, 0xE4)),
+    (di, (0x1A, 0x2B, 0x3C)),
+  ]
+  for (img, (er, eg, eb)) in pixels {
+    let ctx = try #require(
+      CGContext(
+        data: nil, width: 1, height: 1, bitsPerComponent: 8, bytesPerRow: 0,
+        space: img.colorSpace!,
+        bitmapInfo: CGImageAlphaInfo.premultipliedFirst.rawValue
+          | CGBitmapInfo.byteOrder32Little.rawValue))
+    ctx.draw(img, in: CGRect(x: 0, y: 0, width: 1, height: 1))
+    let p = ctx.data!.assumingMemoryBound(to: UInt8.self)
+    let r = Int(p[2]), g = Int(p[1]), b = Int(p[0])
+    #expect(abs(r - er) <= 1 && abs(g - eg) <= 1 && abs(b - eb) <= 1)
+  }
+}

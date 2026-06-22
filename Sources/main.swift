@@ -168,7 +168,7 @@ func dynamicDesktopMetadata(lightIndex: Int, darkIndex: Int) -> CGImageMetadata 
 // MARK: - Dynamic HEIC
 
 func solidImage(_ color: CGColor) -> CGImage? {
-  let info = CGBitmapInfo(rawValue: CGImageAlphaInfo.noneSkipFirst.rawValue).union(
+  let info = CGBitmapInfo(rawValue: CGImageAlphaInfo.premultipliedFirst.rawValue).union(
     .byteOrder32Little)
   guard
     let ctx = CGContext(
@@ -190,10 +190,12 @@ func encodeDynamicHEIC(light: CGColor, dark: CGColor) throws -> Data {
     throw BennieError.heicGenerationFailed
   }
 
+  let lossless = [kCGImageDestinationLossyCompressionQuality: 1.0] as CFDictionary
+
   let md = dynamicDesktopMetadata(lightIndex: 0, darkIndex: 1)
 
-  CGImageDestinationAddImageAndMetadata(dest, li, md, nil)
-  CGImageDestinationAddImage(dest, di, nil)
+  CGImageDestinationAddImageAndMetadata(dest, li, md, lossless)
+  CGImageDestinationAddImage(dest, di, lossless)
   guard CGImageDestinationFinalize(dest) else {
     throw BennieError.heicGenerationFailed
   }
